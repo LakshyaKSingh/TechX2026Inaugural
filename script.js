@@ -113,7 +113,7 @@ function animate() {
     if (!clicked) {
       ctx.beginPath();
       ctx.arc(n.x, n.y, 10, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgb(38, 1, 1)";
+      ctx.strokeStyle = "rgb(0, 0, 0)";
       ctx.lineWidth = 1;
       ctx.stroke();
     }
@@ -122,7 +122,7 @@ function animate() {
     if (clicked) {
       ctx.beginPath();
       ctx.arc(n.x, n.y, 12 + n.pulse, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(253, 28, 28, 0.7)";
+      ctx.strokeStyle = "rgb(255, 0, 0)";
       ctx.lineWidth = 2;
       ctx.stroke();
     }
