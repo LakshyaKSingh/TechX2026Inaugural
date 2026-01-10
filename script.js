@@ -15,7 +15,7 @@ const REQUIRED_CLICKS = 5;
 const CLICK_RADIUS = 14;
 
 // ------------------------------------------------
-// BACKGROUND DOTS (ambient, unchanged behavior)
+// BACKGROUND DOTS (ambient)
 // ------------------------------------------------
 const bgDots = [];
 for (let i = 0; i < BACKGROUND_DOTS; i++) {
@@ -28,7 +28,7 @@ for (let i = 0; i < BACKGROUND_DOTS; i++) {
 }
 
 // ------------------------------------------------
-// FIXED NEURAL NODES (ONLY CLICKABLE)
+// NEURAL NODES (RELATIVE, RESPONSIVE)
 // ------------------------------------------------
 const neuralNodes = [];
 const clickedNodes = new Set();
@@ -50,9 +50,8 @@ function isInsideBrain(x, y) {
 
 function initNeuralNodes() {
   neuralNodes.length = 0;
-  const r = getBrainRect();
 
-  // Fixed relative positions (designed, not random)
+  // RELATIVE positions (0–1) → device independent
   const positions = [
     { x: 0.35, y: 0.55 },
     { x: 0.50, y: 0.40 },
@@ -63,18 +62,19 @@ function initNeuralNodes() {
 
   positions.forEach(p => {
     neuralNodes.push({
-  rx: p.x,     // relative X (0–1)
-  ry: p.y,     // relative Y (0–1)
-  x: 0,
-  y: 0,
-  targetX: null,
-  targetY: null,
-  pulse: 0
-});
+      rx: p.x,
+      ry: p.y,
+      x: 0,
+      y: 0,
+      targetX: null,
+      targetY: null,
+      pulse: 0
+    });
   });
 }
+
 function updateNeuralNodePositions() {
-  // Do NOT override positions while recombining
+  // IMPORTANT: do not override animation during recombination
   if (recombining) return;
 
   const r = getBrainRect();
@@ -84,7 +84,18 @@ function updateNeuralNodePositions() {
   });
 }
 
-initNeuralNodes();
+// ------------------------------------------------
+// INITIALIZE AFTER IMAGE LOAD (CRITICAL)
+// ------------------------------------------------
+if (brainImg.complete) {
+  initNeuralNodes();
+  updateNeuralNodePositions();
+} else {
+  brainImg.onload = () => {
+    initNeuralNodes();
+    updateNeuralNodePositions();
+  };
+}
 
 // ------------------------------------------------
 // DRAW LOOP
@@ -101,41 +112,37 @@ function animate() {
     if (d.x < 0 || d.x > canvas.width) d.vx *= -1;
     if (d.y < 0 || d.y > canvas.height) d.vy *= -1;
 
-    ctx.fillStyle = "rgba(248, 0, 0, 0.74)";
+    ctx.fillStyle = "rgba(248,0,0,0.6)";
     ctx.beginPath();
     ctx.arc(d.x, d.y, 2, 0, Math.PI * 2);
     ctx.fill();
   });
 
   // ---- NEURAL NODES ----
-  const r = getBrainRect();
-  const cx = r.left + r.width / 2;
-  const cy = r.top + r.height / 2;
-
   neuralNodes.forEach((n, i) => {
     const clicked = clickedNodes.has(i);
 
     if (recombining) {
-      n.x += (n.targetX - n.x) * 0.08;
-      n.y += (n.targetY - n.y) * 0.08;
+      n.x += (n.targetX - n.x) * 0.10;
+      n.y += (n.targetY - n.y) * 0.10;
     }
 
-    if (n.pulse > 0) n.pulse -= 0.2;
+    if (n.pulse > 0) n.pulse -= 0.3;
 
-    // ---- REMAINING CLICKS (FAINT RINGS) ----
+    // Remaining nodes (guides)
     if (!clicked) {
       ctx.beginPath();
       ctx.arc(n.x, n.y, 10, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgb(0, 0, 0)";
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(255,0,0,0.6)";
+      ctx.lineWidth = 3;
       ctx.stroke();
     }
 
-    // ---- CLICKED NODE GLOW ----
+    // Clicked glow
     if (clicked) {
       ctx.beginPath();
       ctx.arc(n.x, n.y, 12 + n.pulse, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgb(255, 0, 0)";
+      ctx.strokeStyle = "rgba(255,0,0,0.9)";
       ctx.lineWidth = 2;
       ctx.stroke();
     }
@@ -147,7 +154,7 @@ function animate() {
     ctx.fill();
   });
 
-  // ---- FINAL RED FLASH ----
+  // ---- FINAL FLASH ----
   if (flashAlpha > 0) {
     ctx.fillStyle = `rgba(255,0,0,${flashAlpha})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -171,89 +178,73 @@ splash.addEventListener("click", (e) => {
   if (!isInsideBrain(x, y)) return;
 
   neuralNodes.forEach((n, i) => {
-    const dx = n.x - x;
-    const dy = n.y - y;
+    if (clickedNodes.has(i)) return;
 
-    if (Math.hypot(dx, dy) < CLICK_RADIUS && !clickedNodes.has(i)) {
+    if (Math.hypot(n.x - x, n.y - y) < CLICK_RADIUS) {
       clickedNodes.add(i);
       n.pulse = 4;
     }
   });
 
-  // ---- LAST CLICK LOGIC ----
   if (clickedNodes.size === REQUIRED_CLICKS && !recombining) {
-  recombining = true;
-  flashAlpha = 0.35; // subtle red flash
+    recombining = true;
+    flashAlpha = 0.35;
 
-  neuralNodes.forEach(n => {
-    n.targetX = getBrainRect().left + getBrainRect().width / 2;
-    n.targetY = getBrainRect().top + getBrainRect().height / 2;
-  });
+    const r = getBrainRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
 
-  // ✅ ADD THIS (zoom + fade trigger)
-  setTimeout(() => {
-    splash.classList.add("zoom-out");
-  }, 3000);
+    neuralNodes.forEach(n => {
+      n.targetX = cx;
+      n.targetY = cy;
+    });
 
-  // ⬇️ KEEP YOUR EXISTING VIDEO LOGIC
-  setTimeout(() => {
-    splash.style.display = "none";
-    document.body.classList.add("video-playing");
+    setTimeout(() => {
+      splash.classList.add("zoom-out");
+    }, 300);
 
-    video.muted = false;
-    video.controls = false;
-    video.style.display = "none"; // keep hidden until playing
+    setTimeout(() => {
+      splash.style.display = "none";
+      document.body.classList.add("video-playing");
 
-    const playPromise = video.play();
+      video.muted = false;
+      video.controls = false;
+      video.style.display = "none";
 
-    if (playPromise !== undefined) {
-      playPromise.then(() => {
-        video.style.display = "block";
-
-        if (video.requestFullscreen) {
-          video.requestFullscreen();
-        }
-
-        activated = true;
-      }).catch(() => {
-        video.style.display = "block";
-      });
-    }
-  }, 1500);
-}
-
-});
-document.addEventListener("contextmenu", e => e.preventDefault());
-document.addEventListener("dblclick", e => e.preventDefault());
-video.addEventListener("ended", () => {
-  // Exit fullscreen safely
-  if (document.fullscreenElement) {
-    document.exitFullscreen().catch(() => {});
+      const playPromise = video.play();
+      if (playPromise) {
+        playPromise.then(() => {
+          video.style.display = "block";
+          video.requestFullscreen?.();
+          activated = true;
+        }).catch(() => {
+          video.style.display = "block";
+        });
+      }
+    }, 1500);
   }
+});
 
-  // Hide video
+// ------------------------------------------------
+// VIDEO END → RESET
+// ------------------------------------------------
+video.addEventListener("ended", () => {
+  document.exitFullscreen?.();
   video.pause();
   video.currentTime = 0;
   video.style.display = "none";
 
-  // Restore splash
   splash.style.display = "block";
   splash.classList.remove("zoom-out");
-
-  // Restore cursor state
   document.body.classList.remove("video-playing");
 
-  // RESET STATE (important)
   activated = false;
   recombining = false;
   clickedNodes.clear();
   flashAlpha = 0;
 
-  // Reinitialize neural nodes
-  initNeuralNodes();
+  updateNeuralNodePositions();
 });
-
-
 
 // ------------------------------------------------
 // RESIZE
@@ -264,3 +255,8 @@ window.addEventListener("resize", () => {
   updateNeuralNodePositions();
 });
 
+// ------------------------------------------------
+// HARDEN UI
+// ------------------------------------------------
+document.addEventListener("contextmenu", e => e.preventDefault());
+document.addEventListener("dblclick", e => e.preventDefault());
