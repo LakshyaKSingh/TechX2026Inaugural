@@ -54,11 +54,11 @@ function initNeuralNodes() {
 
   // Fixed relative positions (designed, not random)
   const positions = [
-    { x: 0.35, y: 0.45 },
-    { x: 0.50, y: 0.30 },
-    { x: 0.65, y: 0.45 },
-    { x: 0.45, y: 0.62 },
-    { x: 0.55, y: 0.62 }
+    { x: 0.35, y: 0.55 },
+    { x: 0.50, y: 0.40 },
+    { x: 0.65, y: 0.55 },
+    { x: 0.45, y: 0.72 },
+    { x: 0.65, y: 0.72 }
   ];
 
   positions.forEach(p => {
