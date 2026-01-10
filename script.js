@@ -202,7 +202,7 @@ splash.addEventListener("click", (e) => {
       video.style.display = "block";
     });
   }
-}, 900);
+}, 1500);
 
   }
 });
