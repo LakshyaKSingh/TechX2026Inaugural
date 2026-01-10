@@ -72,17 +72,28 @@ function initNeuralNodes() {
     });
   });
 }
-
+const BRAIN_SAFE_INSET = {
+  top: 0.08,
+  bottom: 0.18,
+  left: 0.06,
+  right: 0.06
+};
 function updateNeuralNodePositions() {
-  // IMPORTANT: do not override animation during recombination
   if (recombining) return;
 
   const r = getBrainRect();
+
+  const safeLeft   = r.left + r.width * BRAIN_SAFE_INSET.left;
+  const safeRight  = r.right - r.width * BRAIN_SAFE_INSET.right;
+  const safeTop    = r.top + r.height * BRAIN_SAFE_INSET.top;
+  const safeBottom = r.bottom - r.height * BRAIN_SAFE_INSET.bottom;
+
   neuralNodes.forEach(n => {
-    n.x = r.left + r.width * n.rx;
-    n.y = r.top + r.height * n.ry;
+    n.x = safeLeft + (safeRight - safeLeft) * n.rx;
+    n.y = safeTop + (safeBottom - safeTop) * n.ry;
   });
 }
+
 
 // ------------------------------------------------
 // INITIALIZE AFTER IMAGE LOAD (CRITICAL)
@@ -112,7 +123,7 @@ function animate() {
     if (d.x < 0 || d.x > canvas.width) d.vx *= -1;
     if (d.y < 0 || d.y > canvas.height) d.vy *= -1;
 
-    ctx.fillStyle = "rgba(248,0,0,0.6)";
+    ctx.fillStyle = "rgba(255, 4, 4, 0.6)";
     ctx.beginPath();
     ctx.arc(d.x, d.y, 2, 0, Math.PI * 2);
     ctx.fill();
@@ -133,7 +144,7 @@ function animate() {
     if (!clicked) {
       ctx.beginPath();
       ctx.arc(n.x, n.y, 10, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(255,0,0,0.6)";
+      ctx.strokeStyle = "rgb(11, 0, 0)";
       ctx.lineWidth = 3;
       ctx.stroke();
     }
