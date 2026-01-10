@@ -73,7 +73,7 @@ function initNeuralNodes() {
   });
 }
 const BRAIN_SAFE_INSET = {
-  top: 0.08,
+  top: 0.05,
   bottom: 0.18,
   left: 0.06,
   right: 0.06
