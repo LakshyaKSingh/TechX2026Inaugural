@@ -8,10 +8,14 @@ html, body {
 }
 
 #splash {
-  position: fixed;
-  inset: 0;
+  transition: transform 0.6s ease, opacity 0.6s ease;
+  transform-origin: center;
 }
 
+#splash.zoom-out {
+  transform: scale(1.08);
+  opacity: 0;
+}
 #brainImage {
   position: absolute;
   width: 100%;
