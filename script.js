@@ -226,7 +226,7 @@ splash.addEventListener("click", (e) => {
       if (playPromise) {
         playPromise.then(() => {
           video.style.display = "block";
-          video.requestFullscreen?.();
+          // video.requestFullscreen?.();
           activated = true;
         }).catch(() => {
           video.style.display = "block";
