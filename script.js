@@ -138,7 +138,7 @@ function animate() {
       n.y += (n.targetY - n.y) * 0.10;
     }
 
-    if (n.pulse > 0) n.pulse -= 0.3;
+    if (n.pulse > 0) n.pulse -= 0.5;
 
     // Remaining nodes (guides)
     if (!clicked) {
@@ -169,7 +169,7 @@ function animate() {
   if (flashAlpha > 0) {
     ctx.fillStyle = `rgba(255,0,0,${flashAlpha})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    flashAlpha -= 0.05;
+    flashAlpha -= 0.02;
   }
 
   requestAnimationFrame(animate);
@@ -199,7 +199,7 @@ splash.addEventListener("click", (e) => {
 
   if (clickedNodes.size === REQUIRED_CLICKS && !recombining) {
     recombining = true;
-    flashAlpha = 0.35;
+    flashAlpha = 0.50;
 
     const r = getBrainRect();
     const cx = r.left + r.width / 2;
@@ -212,7 +212,7 @@ splash.addEventListener("click", (e) => {
 
     setTimeout(() => {
       splash.classList.add("zoom-out");
-    }, 300);
+    }, 3000);
 
     setTimeout(() => {
       splash.style.display = "none";
@@ -232,7 +232,7 @@ splash.addEventListener("click", (e) => {
           video.style.display = "block";
         });
       }
-    }, 1500);
+    }, 3000);
   }
 });
 
