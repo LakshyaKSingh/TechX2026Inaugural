@@ -19,13 +19,14 @@ const CLICK_RADIUS = 14;
 
 const NODE_COLORS = [
   "#ff3b3b",
-  "#00d3f8",
+  "#1ce5ff",
   "#ffd60a",
   "#4cd137",
   "#1e90ff"
 ];
 
-const THEME_COLOR = "#fff12a";
+const THEME_COLOR = "#d1ff2a";
+const TOTAL_LINKS = REQUIRED_CLICKS; // closes loop back to first node
 
 // ============================================================
 // BACKGROUND DOTS
@@ -41,7 +42,7 @@ for (let i = 0; i < BACKGROUND_DOTS; i++) {
 }
 
 // ============================================================
-// NEURAL NODES
+// NEURAL NODES + STATES
 // ============================================================
 const neuralNodes = [];
 const clickedNodes = new Set();
@@ -50,10 +51,10 @@ let recombining = false;
 let activated = false;
 let flashAlpha = 0;
 
-// --- connection animation state ---
+// connection animation state
 let showConnections = false;
-let currentLink = 0;
-let linkProgress = 0;
+let currentLink = 0;     // which segment is animating
+let linkProgress = 0;    // 0..1 along the current curve
 
 // ============================================================
 // HELPERS
@@ -67,6 +68,7 @@ function isInsideBrain(x, y) {
   return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
 }
 
+// Safe inset to respect brain silhouette
 const BRAIN_SAFE_INSET = {
   top: 0.10,
   bottom: 0.16,
@@ -114,8 +116,31 @@ function updateNeuralNodePositions() {
   });
 }
 
+// Quadratic Bezier helper
+function quadBezierPoint(t, p0, p1, p2) {
+  const u = 1 - t;
+  return {
+    x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
+    y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y
+  };
+}
+
+// Compute a gentle control point (perpendicular offset)
+function controlPoint(a, b, curvature = 0.25) {
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  // perpendicular
+  return {
+    x: mx - (dy / len) * len * curvature,
+    y: my + (dx / len) * len * curvature
+  };
+}
+
 // ============================================================
-// INITIALIZATION
+// INIT AFTER IMAGE LOAD
 // ============================================================
 if (brainImg.complete) {
   initNeuralNodes();
@@ -138,60 +163,64 @@ function animate() {
   bgDots.forEach(d => {
     d.x += d.vx;
     d.y += d.vy;
-
     if (d.x < 0 || d.x > canvas.width) d.vx *= -1;
     if (d.y < 0 || d.y > canvas.height) d.vy *= -1;
 
-    ctx.fillStyle = "rgb(255, 0, 0)";
+    ctx.fillStyle = "rgba(255,0,0,0.45)";
     ctx.beginPath();
     ctx.arc(d.x, d.y, 2, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  // --- animated connections (includes first node + glow) ---
+  // --- animated curved connections with traveling glow ---
   if (showConnections) {
     const nodes = [...clickedNodes].map(i => neuralNodes[i]);
-    ctx.strokeStyle = THEME_COLOR;
     ctx.lineWidth = 2;
 
-    // draw completed links
+    // draw completed links (full curves)
     for (let i = 0; i < currentLink; i++) {
       const a = nodes[i];
-      const b = (i === REQUIRED_CLICKS - 1) ? nodes[0] : nodes[i + 1];
+      const b = (i === TOTAL_LINKS - 1) ? nodes[0] : nodes[i + 1];
+      const c = controlPoint(a, b);
 
+      ctx.strokeStyle = THEME_COLOR;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
+      ctx.quadraticCurveTo(c.x, c.y, b.x, b.y);
       ctx.stroke();
     }
 
-    // animate current link with traveling glow
-    if (currentLink < REQUIRED_CLICKS) {
+    // animate current link (partial curve + glow head)
+    if (currentLink < TOTAL_LINKS) {
       const a = nodes[currentLink];
-      const b = (currentLink === REQUIRED_CLICKS - 1)
-        ? nodes[0]     // CLOSE LOOP → back to first node
-        : nodes[currentLink + 1];
+      const b = (currentLink === TOTAL_LINKS - 1) ? nodes[0] : nodes[currentLink + 1];
+      const c = controlPoint(a, b);
 
-      const x = a.x + (b.x - a.x) * linkProgress;
-      const y = a.y + (b.y - a.y) * linkProgress;
-
+      // draw partial curve by sampling points up to linkProgress
+      ctx.strokeStyle = THEME_COLOR;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
-      ctx.lineTo(x, y);
+
+      const steps = Math.max(10, Math.floor(60 * linkProgress));
+      for (let i = 1; i <= steps; i++) {
+        const t = (i / steps) * linkProgress;
+        const p = quadBezierPoint(t, a, c, b);
+        ctx.lineTo(p.x, p.y);
+      }
       ctx.stroke();
 
-      // glowing head
+      // traveling glow at the head
+      const head = quadBezierPoint(linkProgress, a, c, b);
       ctx.save();
       ctx.shadowColor = THEME_COLOR;
-      ctx.shadowBlur = 16;
+      ctx.shadowBlur = 18;
       ctx.fillStyle = THEME_COLOR;
       ctx.beginPath();
-      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx.arc(head.x, head.y, 3.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
-      linkProgress += 0.04;
-
+      linkProgress += 0.035;
       if (linkProgress >= 1) {
         linkProgress = 0;
         currentLink++;
@@ -226,7 +255,7 @@ function animate() {
       ctx.stroke();
     }
 
-    ctx.fillStyle = clicked ? n.color : "#ff0000";
+    ctx.fillStyle = clicked ? n.color : "#ff3b3b";
     ctx.beginPath();
     ctx.arc(n.x, n.y, 4, 0, Math.PI * 2);
     ctx.fill();
@@ -256,7 +285,6 @@ splash.addEventListener("click", (e) => {
 
   neuralNodes.forEach((n, i) => {
     if (clickedNodes.has(i)) return;
-
     if (Math.hypot(n.x - x, n.y - y) < CLICK_RADIUS) {
       clickedNodes.add(i);
       n.pulse = 4;
@@ -269,6 +297,8 @@ splash.addEventListener("click", (e) => {
     currentLink = 0;
     linkProgress = 0;
 
+    // recombine after loop completes
+    const LOOP_DURATION = TOTAL_LINKS * 500;
     setTimeout(() => {
       recombining = true;
       flashAlpha = 0.5;
@@ -283,7 +313,7 @@ splash.addEventListener("click", (e) => {
         n.color = THEME_COLOR;
       });
 
-      setTimeout(() => splash.classList.add("zoom-out"), 800);
+      setTimeout(() => splash.classList.add("zoom-out"), 2000);
 
       setTimeout(() => {
         splash.style.display = "none";
@@ -303,7 +333,7 @@ splash.addEventListener("click", (e) => {
           });
         }
       }, 1500);
-    }, 3200);
+    }, LOOP_DURATION);
   }
 });
 

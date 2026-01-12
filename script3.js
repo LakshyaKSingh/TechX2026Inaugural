@@ -19,13 +19,13 @@ const CLICK_RADIUS = 14;
 
 const NODE_COLORS = [
   "#ff3b3b",
-  "#00d3f8",
+  "#1ce5ff",
   "#ffd60a",
   "#4cd137",
   "#1e90ff"
 ];
 
-const THEME_COLOR = "#fff12a";
+const THEME_COLOR = "#d1ff2a";
 
 // ============================================================
 // BACKGROUND DOTS
@@ -41,7 +41,7 @@ for (let i = 0; i < BACKGROUND_DOTS; i++) {
 }
 
 // ============================================================
-// NEURAL NODES
+// NEURAL NODES + STATES
 // ============================================================
 const neuralNodes = [];
 const clickedNodes = new Set();
@@ -50,10 +50,39 @@ let recombining = false;
 let activated = false;
 let flashAlpha = 0;
 
-// --- connection animation state ---
+// connection animation
 let showConnections = false;
 let currentLink = 0;
 let linkProgress = 0;
+
+// ============================================================
+// BRAIN REVEAL (UNPROPORTIONAL)
+// ============================================================
+let revealTarget = 0;
+let revealCurrent = 0;
+
+function updateBrainRevealTarget() {
+  const c = clickedNodes.size;
+
+  if (c === 0) {
+    revealTarget = 0;
+  } else if (c < REQUIRED_CLICKS) {
+    // first 4 clicks → only 50%
+    revealTarget = (c / (REQUIRED_CLICKS - 1)) * 50;
+  } else {
+    // final click → full brain
+    revealTarget = 100;
+  }
+}
+
+function animateBrainReveal() {
+  revealCurrent += (revealTarget - revealCurrent) * 0.045;
+
+  brainImg.style.clipPath =
+    `circle(${revealCurrent}% at 50% 50%)`;
+  brainImg.style.webkitClipPath =
+    `circle(${revealCurrent}% at 50% 50%)`;
+}
 
 // ============================================================
 // HELPERS
@@ -115,7 +144,30 @@ function updateNeuralNodePositions() {
 }
 
 // ============================================================
-// INITIALIZATION
+// BEZIER HELPERS
+// ============================================================
+function quadBezierPoint(t, p0, p1, p2) {
+  const u = 1 - t;
+  return {
+    x: u*u*p0.x + 2*u*t*p1.x + t*t*p2.x,
+    y: u*u*p0.y + 2*u*t*p1.y + t*t*p2.y
+  };
+}
+
+function controlPoint(a, b, k = 0.25) {
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return {
+    x: mx - (dy / len) * len * k,
+    y: my + (dx / len) * len * k
+  };
+}
+
+// ============================================================
+// INIT
 // ============================================================
 if (brainImg.complete) {
   initNeuralNodes();
@@ -127,71 +179,74 @@ if (brainImg.complete) {
   };
 }
 
+// brain fully hidden initially
+brainImg.style.clipPath = "circle(0% at 50% 50%)";
+brainImg.style.webkitClipPath = "circle(0% at 50% 50%)";
+
 // ============================================================
 // DRAW LOOP
 // ============================================================
 function animate() {
   updateNeuralNodePositions();
+  animateBrainReveal();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // --- background dots ---
+  // background dots
   bgDots.forEach(d => {
     d.x += d.vx;
     d.y += d.vy;
-
     if (d.x < 0 || d.x > canvas.width) d.vx *= -1;
     if (d.y < 0 || d.y > canvas.height) d.vy *= -1;
 
-    ctx.fillStyle = "rgb(255, 0, 0)";
+    ctx.fillStyle = "rgba(255,0,0,0.45)";
     ctx.beginPath();
     ctx.arc(d.x, d.y, 2, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  // --- animated connections (includes first node + glow) ---
+  // connections
   if (showConnections) {
     const nodes = [...clickedNodes].map(i => neuralNodes[i]);
     ctx.strokeStyle = THEME_COLOR;
     ctx.lineWidth = 2;
 
-    // draw completed links
     for (let i = 0; i < currentLink; i++) {
       const a = nodes[i];
       const b = (i === REQUIRED_CLICKS - 1) ? nodes[0] : nodes[i + 1];
-
+      const c = controlPoint(a, b);
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
+      ctx.quadraticCurveTo(c.x, c.y, b.x, b.y);
       ctx.stroke();
     }
 
-    // animate current link with traveling glow
     if (currentLink < REQUIRED_CLICKS) {
       const a = nodes[currentLink];
-      const b = (currentLink === REQUIRED_CLICKS - 1)
-        ? nodes[0]     // CLOSE LOOP → back to first node
-        : nodes[currentLink + 1];
-
-      const x = a.x + (b.x - a.x) * linkProgress;
-      const y = a.y + (b.y - a.y) * linkProgress;
+      const b = (currentLink === REQUIRED_CLICKS - 1) ? nodes[0] : nodes[currentLink + 1];
+      const c = controlPoint(a, b);
 
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
-      ctx.lineTo(x, y);
+
+      const steps = Math.max(10, Math.floor(50 * linkProgress));
+      for (let i = 1; i <= steps; i++) {
+        const t = (i / steps) * linkProgress;
+        const p = quadBezierPoint(t, a, c, b);
+        ctx.lineTo(p.x, p.y);
+      }
       ctx.stroke();
 
-      // glowing head
+      const head = quadBezierPoint(linkProgress, a, c, b);
       ctx.save();
       ctx.shadowColor = THEME_COLOR;
-      ctx.shadowBlur = 16;
+      ctx.shadowBlur = 18;
       ctx.fillStyle = THEME_COLOR;
       ctx.beginPath();
-      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx.arc(head.x, head.y, 3.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
-      linkProgress += 0.04;
-
+      linkProgress += 0.035;
       if (linkProgress >= 1) {
         linkProgress = 0;
         currentLink++;
@@ -199,21 +254,15 @@ function animate() {
     }
   }
 
-  // --- neural nodes ---
+  // neural nodes
   neuralNodes.forEach((n, i) => {
     const clicked = clickedNodes.has(i);
-
-    if (recombining) {
-      n.x += (n.targetX - n.x) * 0.1;
-      n.y += (n.targetY - n.y) * 0.1;
-    }
-
     if (n.pulse > 0) n.pulse -= 0.25;
 
     if (!clicked) {
       ctx.beginPath();
       ctx.arc(n.x, n.y, 10, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgb(0, 0, 0)";
+      ctx.strokeStyle = "black";
       ctx.lineWidth = 3;
       ctx.stroke();
     }
@@ -226,18 +275,11 @@ function animate() {
       ctx.stroke();
     }
 
-    ctx.fillStyle = clicked ? n.color : "#ff0000";
+    ctx.fillStyle = clicked ? n.color : "#ff3b3b";
     ctx.beginPath();
     ctx.arc(n.x, n.y, 4, 0, Math.PI * 2);
     ctx.fill();
   });
-
-  // --- final flash ---
-  if (flashAlpha > 0) {
-    ctx.fillStyle = `rgba(255,0,0,${flashAlpha})`;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    flashAlpha -= 0.03;
-  }
 
   requestAnimationFrame(animate);
 }
@@ -256,11 +298,11 @@ splash.addEventListener("click", (e) => {
 
   neuralNodes.forEach((n, i) => {
     if (clickedNodes.has(i)) return;
-
     if (Math.hypot(n.x - x, n.y - y) < CLICK_RADIUS) {
       clickedNodes.add(i);
       n.pulse = 4;
       n.color = NODE_COLORS[clickedNodes.size - 1];
+      updateBrainRevealTarget();
     }
   });
 
@@ -283,27 +325,18 @@ splash.addEventListener("click", (e) => {
         n.color = THEME_COLOR;
       });
 
-      setTimeout(() => splash.classList.add("zoom-out"), 800);
+      setTimeout(() => splash.classList.add("zoom-out"), 2000);
 
       setTimeout(() => {
         splash.style.display = "none";
         document.body.classList.add("video-playing");
-
         video.muted = false;
         video.controls = false;
-        video.style.display = "none";
-
-        const p = video.play();
-        if (p) {
-          p.then(() => {
-            video.style.display = "block";
-            activated = true;
-          }).catch(() => {
-            video.style.display = "block";
-          });
-        }
+        video.style.display = "block";
+        video.play().catch(() => {});
+        activated = true;
       }, 1500);
-    }, 3200);
+    }, REQUIRED_CLICKS * 500);
   }
 });
 
@@ -316,7 +349,6 @@ video.addEventListener("ended", () => {
   video.style.display = "none";
 
   splash.style.display = "block";
-  splash.classList.remove("zoom-out");
   document.body.classList.remove("video-playing");
 
   activated = false;
@@ -325,13 +357,15 @@ video.addEventListener("ended", () => {
   currentLink = 0;
   linkProgress = 0;
   clickedNodes.clear();
-  flashAlpha = 0;
+  revealTarget = 0;
+  revealCurrent = 0;
 
-  updateNeuralNodePositions();
+  brainImg.style.clipPath = "circle(0% at 50% 50%)";
+  brainImg.style.webkitClipPath = "circle(0% at 50% 50%)";
 });
 
 // ============================================================
-// RESIZE
+// RESIZE + UI HARDENING
 // ============================================================
 window.addEventListener("resize", () => {
   canvas.width = window.innerWidth;
@@ -339,8 +373,5 @@ window.addEventListener("resize", () => {
   updateNeuralNodePositions();
 });
 
-// ============================================================
-// UI HARDENING
-// ============================================================
 document.addEventListener("contextmenu", e => e.preventDefault());
 document.addEventListener("dblclick", e => e.preventDefault());
