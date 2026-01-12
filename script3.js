@@ -6,6 +6,7 @@ const ctx = canvas.getContext("2d");
 const video = document.getElementById("introVideo");
 const splash = document.getElementById("splash");
 const brainImg = document.getElementById("brainImage");
+const clickSound = document.getElementById("clickSound");
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
@@ -289,7 +290,13 @@ animate();
 // ============================================================
 // CLICK HANDLER
 // ============================================================
+clickSound.volume = 0.35;
+    clickSound.play();
 splash.addEventListener("click", (e) => {
+    // 🔊 background ambience start
+  if (video.paused) {
+    
+  }
   if (activated) return;
 
   const x = e.clientX;
@@ -333,6 +340,9 @@ splash.addEventListener("click", (e) => {
         video.muted = false;
         video.controls = false;
         video.style.display = "block";
+        clickSound.pause();
+clickSound.currentTime = 0;
+
         video.play().catch(() => {});
         activated = true;
       }, 1500);
