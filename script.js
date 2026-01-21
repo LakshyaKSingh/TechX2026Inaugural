@@ -37,6 +37,27 @@ const NODE_LABELS = [
 const THEME_COLOR = "#ff0000";
 
 // ============================================================
+// AUDIO UNLOCK (CRITICAL)
+// ============================================================
+let audioUnlocked = false;
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+
+  video.muted = false;
+  video.volume = 1;
+
+  const p = video.play();
+  if (p) {
+    p.then(() => {
+      video.pause();
+      video.currentTime = 0;
+      audioUnlocked = true;
+    }).catch(() => {});
+  }
+}
+
+// ============================================================
 // BACKGROUND DOTS
 // ============================================================
 const bgDots = [];
@@ -120,7 +141,6 @@ function initNeuralNodes() {
       y: 0,
       targetX: null,
       targetY: null,
-      pulse: 0,
       color: null,
       label: NODE_LABELS[i],
       labelAlpha: 0,
@@ -190,7 +210,7 @@ function animate() {
     ctx.fill();
   });
 
-  // CONNECTIONS
+  // Connections
   if (showConnections) {
     const nodes = [...clickedNodes].map(i => neuralNodes[i]);
     ctx.strokeStyle = THEME_COLOR;
@@ -239,7 +259,7 @@ function animate() {
     }
   }
 
-  // NODES + LABELS
+  // Nodes + labels
   neuralNodes.forEach((n, i) => {
     const clicked = clickedNodes.has(i);
     if (clicked && n.labelAlpha < 1) n.labelAlpha += 0.03;
@@ -249,24 +269,24 @@ function animate() {
     ctx.arc(n.x, n.y, 4, 0, Math.PI * 2);
     ctx.fill();
 
-    // 🔧 FIX: labels remain until recombination starts
-    if (clicked && !recombining) {
+    if (clicked && !showAIMerge) {
       const dx = n.x - canvas.width / 2;
       const dy = n.y - canvas.height / 2;
       const len = Math.hypot(dx, dy) || 1;
 
-      const lx = n.x + (dx / len) * n.labelOffset;
-      const ly = n.y + (dy / len) * n.labelOffset;
-
       ctx.globalAlpha = n.labelAlpha;
       ctx.fillStyle = THEME_COLOR;
       ctx.font = "600 15px 'Segoe UI', 'Inter', 'Poppins', Arial";
-      ctx.fillText(n.label, lx, ly);
+      ctx.fillText(
+        n.label,
+        n.x + (dx / len) * n.labelOffset,
+        n.y + (dy / len) * n.labelOffset
+      );
       ctx.globalAlpha = 1;
     }
   });
 
-  // AI MERGE
+  // AI merge
   if (showAIMerge) {
     aiAlpha += 0.025;
     ctx.globalAlpha = Math.min(aiAlpha, 1);
@@ -286,6 +306,8 @@ animate();
 // CLICK HANDLER
 // ============================================================
 splash.addEventListener("click", (e) => {
+  unlockAudio(); // MUST be first
+
   if (activated) return;
 
   const x = e.clientX;
@@ -297,48 +319,36 @@ splash.addEventListener("click", (e) => {
     if (Math.hypot(n.x - x, n.y - y) < CLICK_RADIUS) {
       clickedNodes.add(i);
       n.color = NODE_COLORS[clickedNodes.size - 1];
-
       clickSound.currentTime = 0;
       clickSound.play().catch(() => {});
-
       updateBrainRevealTarget();
     }
   });
 
   if (clickedNodes.size === REQUIRED_CLICKS && !showConnections) {
     showConnections = true;
-    currentLink = 0;
-    linkProgress = 0;
 
     setTimeout(() => {
       recombining = true;
       showAIMerge = true;
 
       const r = getBrainRect();
-      const cx = r.left + r.width / 2;
-      const cy = r.top + r.height / 2;
-
       neuralNodes.forEach(n => {
-        n.targetX = cx;
-        n.targetY = cy;
+        n.targetX = r.left + r.width / 2;
+        n.targetY = r.top + r.height / 2;
       });
 
       setTimeout(() => splash.classList.add("zoom-out"), 2500);
 
       setTimeout(() => {
         splash.style.display = "none";
-        document.body.classList.add("video-playing");
-
-        // 🔧 FIX: ensure video audio works
         clickSound.pause();
         clickSound.currentTime = 0;
 
-        video.controls = false;
+        video.muted = false;
+        video.volume = 1;
         video.style.display = "block";
-        video.play().then(() => {
-          video.muted = false;
-        }).catch(() => {});
-
+        video.play().catch(() => {});
         activated = true;
       }, 3500);
     }, REQUIRED_CLICKS * 500);
@@ -363,7 +373,6 @@ video.addEventListener("ended", () => {
   clickedNodes.clear();
   revealTarget = 0;
   revealCurrent = 0;
-
   brainImg.style.clipPath = "circle(0% at 50% 50%)";
 });
 
