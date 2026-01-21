@@ -27,14 +27,14 @@ const NODE_COLORS = [
 ];
 
 const NODE_LABELS = [
-  "Machine Learning",
-  "Deep Intelligence",
-  "Language Intelligence",
-  "Perceptual Intelligence",
-  "Decision & Action Systems"
+  "LLM",
+  "Gen AI",
+  "Deep Learning",
+  "Neural Network",
+  "Machine Learning"
 ];
 
-const THEME_COLOR = "#d1ff2a";
+const THEME_COLOR = "#ff0000";
 
 // ============================================================
 // BACKGROUND DOTS
@@ -57,7 +57,6 @@ const clickedNodes = new Set();
 
 let recombining = false;
 let activated = false;
-let flashAlpha = 0;
 
 let showConnections = false;
 let currentLink = 0;
@@ -134,19 +133,19 @@ function updateNeuralNodePositions() {
   if (recombining) return;
 
   const r = getBrainRect();
-  const safeLeft = r.left + r.width * BRAIN_SAFE_INSET.left;
-  const safeRight = r.right - r.width * BRAIN_SAFE_INSET.right;
-  const safeTop = r.top + r.height * BRAIN_SAFE_INSET.top;
-  const safeBottom = r.bottom - r.height * BRAIN_SAFE_INSET.bottom;
+  const l = r.left + r.width * BRAIN_SAFE_INSET.left;
+  const rt = r.right - r.width * BRAIN_SAFE_INSET.right;
+  const t = r.top + r.height * BRAIN_SAFE_INSET.top;
+  const b = r.bottom - r.height * BRAIN_SAFE_INSET.bottom;
 
   neuralNodes.forEach(n => {
-    n.x = safeLeft + (safeRight - safeLeft) * n.rx;
-    n.y = safeTop + (safeBottom - safeTop) * n.ry;
+    n.x = l + (rt - l) * n.rx;
+    n.y = t + (b - t) * n.ry;
   });
 }
 
 // ============================================================
-// BEZIER HELPERS (UNCHANGED)
+// BEZIER HELPERS
 // ============================================================
 function quadBezierPoint(t, p0, p1, p2) {
   const u = 1 - t;
@@ -171,16 +170,7 @@ function controlPoint(a, b, k = 0.25) {
 // ============================================================
 // INIT
 // ============================================================
-if (brainImg.complete) {
-  initNeuralNodes();
-  updateNeuralNodePositions();
-} else {
-  brainImg.onload = () => {
-    initNeuralNodes();
-    updateNeuralNodePositions();
-  };
-}
-
+initNeuralNodes();
 brainImg.style.clipPath = "circle(0% at 50% 50%)";
 
 // ============================================================
@@ -191,19 +181,16 @@ function animate() {
   animateBrainReveal();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // background dots
   bgDots.forEach(d => {
     d.x += d.vx;
     d.y += d.vy;
-    if (d.x < 0 || d.x > canvas.width) d.vx *= -1;
-    if (d.y < 0 || d.y > canvas.height) d.vy *= -1;
     ctx.fillStyle = "rgba(255,0,0,0.45)";
     ctx.beginPath();
     ctx.arc(d.x, d.y, 2, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  // CONNECTIONS (UNCHANGED)
+  // CONNECTIONS
   if (showConnections) {
     const nodes = [...clickedNodes].map(i => neuralNodes[i]);
     ctx.strokeStyle = THEME_COLOR;
@@ -226,7 +213,6 @@ function animate() {
 
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
-
       const steps = Math.max(10, Math.floor(50 * linkProgress));
       for (let i = 1; i <= steps; i++) {
         const t = (i / steps) * linkProgress;
@@ -263,7 +249,8 @@ function animate() {
     ctx.arc(n.x, n.y, 4, 0, Math.PI * 2);
     ctx.fill();
 
-    if (clicked && !showAIMerge) {
+    // 🔧 FIX: labels remain until recombination starts
+    if (clicked && !recombining) {
       const dx = n.x - canvas.width / 2;
       const dy = n.y - canvas.height / 2;
       const len = Math.hypot(dx, dy) || 1;
@@ -279,7 +266,7 @@ function animate() {
     }
   });
 
-  // AI MERGE TEXT
+  // AI MERGE
   if (showAIMerge) {
     aiAlpha += 0.025;
     ctx.globalAlpha = Math.min(aiAlpha, 1);
@@ -296,7 +283,7 @@ function animate() {
 animate();
 
 // ============================================================
-// CLICK HANDLER (UNCHANGED LOGIC)
+// CLICK HANDLER
 // ============================================================
 splash.addEventListener("click", (e) => {
   if (activated) return;
@@ -308,15 +295,14 @@ splash.addEventListener("click", (e) => {
   neuralNodes.forEach((n, i) => {
     if (clickedNodes.has(i)) return;
     if (Math.hypot(n.x - x, n.y - y) < CLICK_RADIUS) {
-  clickedNodes.add(i);
-  n.color = NODE_COLORS[clickedNodes.size - 1];
+      clickedNodes.add(i);
+      n.color = NODE_COLORS[clickedNodes.size - 1];
 
-  // 🔊 CLICK SOUND (minimal, safe)
-  clickSound.currentTime = 0;
-  clickSound.play().catch(() => {});
+      clickSound.currentTime = 0;
+      clickSound.play().catch(() => {});
 
-  updateBrainRevealTarget();
-}
+      updateBrainRevealTarget();
+    }
   });
 
   if (clickedNodes.size === REQUIRED_CLICKS && !showConnections) {
@@ -337,23 +323,30 @@ splash.addEventListener("click", (e) => {
         n.targetY = cy;
       });
 
-      setTimeout(() => splash.classList.add("zoom-out"), 2000);
+      setTimeout(() => splash.classList.add("zoom-out"), 2500);
 
       setTimeout(() => {
         splash.style.display = "none";
         document.body.classList.add("video-playing");
-        video.muted = false;
+
+        // 🔧 FIX: ensure video audio works
+        clickSound.pause();
+        clickSound.currentTime = 0;
+
         video.controls = false;
         video.style.display = "block";
-        video.play().catch(() => {});
+        video.play().then(() => {
+          video.muted = false;
+        }).catch(() => {});
+
         activated = true;
-      }, 1500);
+      }, 3500);
     }, REQUIRED_CLICKS * 500);
   }
 });
 
 // ============================================================
-// VIDEO RESET (UNCHANGED)
+// VIDEO RESET
 // ============================================================
 video.addEventListener("ended", () => {
   video.pause();
@@ -370,6 +363,8 @@ video.addEventListener("ended", () => {
   clickedNodes.clear();
   revealTarget = 0;
   revealCurrent = 0;
+
+  brainImg.style.clipPath = "circle(0% at 50% 50%)";
 });
 
 // ============================================================
