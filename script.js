@@ -34,7 +34,7 @@ const NODE_LABELS = [
   "Machine Learning"
 ];
 
-const THEME_COLOR = "#ff0000";
+const THEME_COLOR = "#ffae00";
 
 // ============================================================
 // AUDIO UNLOCK (CRITICAL)
