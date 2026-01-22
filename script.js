@@ -47,13 +47,35 @@ function unlockAudio() {
   video.muted = false;
   video.volume = 1;
 
-  const p = video.play();
-  if (p) {
-    p.then(() => {
+  clickSound.muted = false;
+  clickSound.volume = 1;
+
+  Promise.allSettled([
+    video.play().then(() => {
       video.pause();
       video.currentTime = 0;
-      audioUnlocked = true;
-    }).catch(() => {});
+    }),
+    clickSound.play().then(() => {
+      clickSound.pause();
+      clickSound.currentTime = 0;
+    })
+  ]).then(() => {
+    audioUnlocked = true;
+  });
+}
+
+// ============================================================
+// DESKTOP FULLSCREEN HELPER (ADDED)
+// ============================================================
+function requestVideoFullscreen() {
+  if (document.fullscreenElement) return;
+
+  if (video.requestFullscreen) {
+    video.requestFullscreen();
+  } else if (video.webkitRequestFullscreen) {
+    video.webkitRequestFullscreen();
+  } else if (video.msRequestFullscreen) {
+    video.msRequestFullscreen();
   }
 }
 
@@ -86,7 +108,6 @@ let linkProgress = 0;
 let showAIMerge = false;
 let aiAlpha = 0;
 
-// instruction fade state
 let instructionHidden = false;
 
 // ============================================================
@@ -130,11 +151,10 @@ function initNeuralNodes() {
 
   const positions = [
     { x: 0.35, y: 0.55 },
+    { x: 0.65, y: 0.55 }, //2
+    { x: 0.65, y: 0.72 },//3
     { x: 0.50, y: 0.40 },
-    { x: 0.65, y: 0.55 },
-    { x: 0.65, y: 0.72 },
     { x: 0.45, y: 0.72 }
-    
   ];
 
   positions.forEach((p, i) => {
@@ -148,9 +168,7 @@ function initNeuralNodes() {
       color: null,
       label: NODE_LABELS[i],
       labelAlpha: 0,
-      // labelOffset: 36
       labelOffset: i === 2 ? 60 : 36
-
     });
   });
 }
@@ -207,7 +225,6 @@ function animate() {
   animateBrainReveal();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // background dots
   bgDots.forEach(d => {
     d.x += d.vx;
     d.y += d.vy;
@@ -217,7 +234,6 @@ function animate() {
     ctx.fill();
   });
 
-  // connections
   if (showConnections) {
     const nodes = [...clickedNodes].map(i => neuralNodes[i]);
     ctx.strokeStyle = THEME_COLOR;
@@ -266,24 +282,21 @@ function animate() {
     }
   }
 
-  // nodes + labels + numbers
   neuralNodes.forEach((n, i) => {
     const clicked = clickedNodes.has(i);
     if (clicked && n.labelAlpha < 1) n.labelAlpha += 0.03;
 
     ctx.fillStyle = clicked ? n.color : "#ff3b3b";
     ctx.beginPath();
-    ctx.arc(n.x, n.y, 9, 0, Math.PI * 2);
+    ctx.arc(n.x, n.y, 11, 0, Math.PI * 2);//This Control Circle
     ctx.fill();
 
-    // node number
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 14px 'Segoe UI', 'Inter', 'Poppins', Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(i + 1, n.x, n.y);
 
-    // labels
     if (clicked && !showAIMerge) {
       const dx = n.x - canvas.width / 2;
       const dy = n.y - canvas.height / 2;
@@ -301,7 +314,6 @@ function animate() {
     }
   });
 
-  // AI merge
   if (showAIMerge) {
     aiAlpha += 0.025;
     ctx.globalAlpha = Math.min(aiAlpha, 1);
@@ -346,7 +358,6 @@ splash.addEventListener("click", (e) => {
     }
   });
 
-  // 🔹 Hide instruction text ONLY after first VALID node click
   if (validClick && !instructionHidden) {
     const instr = document.getElementById("instructionText");
     if (instr) {
@@ -358,9 +369,10 @@ splash.addEventListener("click", (e) => {
     instructionHidden = true;
   }
 
-  // 🔹 Final sequence trigger
   if (clickedNodes.size === REQUIRED_CLICKS && !showConnections) {
     showConnections = true;
+
+    requestVideoFullscreen();
 
     setTimeout(() => {
       recombining = true;
