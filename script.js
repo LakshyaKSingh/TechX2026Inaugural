@@ -16,7 +16,7 @@ canvas.height = window.innerHeight;
 // ============================================================
 const BACKGROUND_DOTS = 120;
 const REQUIRED_CLICKS = 5;
-const CLICK_RADIUS = 14;
+const CLICK_RADIUS = 50;
 
 const NODE_COLORS = [
   "#ff3b3b",
@@ -34,7 +34,7 @@ const NODE_LABELS = [
   "Machine Learning"
 ];
 
-const THEME_COLOR = "#ffae00";
+const THEME_COLOR = "#ff0000";
 
 // ============================================================
 // AUDIO UNLOCK (CRITICAL)
@@ -86,6 +86,9 @@ let linkProgress = 0;
 let showAIMerge = false;
 let aiAlpha = 0;
 
+// instruction fade state
+let instructionHidden = false;
+
 // ============================================================
 // BRAIN REVEAL
 // ============================================================
@@ -129,8 +132,9 @@ function initNeuralNodes() {
     { x: 0.35, y: 0.55 },
     { x: 0.50, y: 0.40 },
     { x: 0.65, y: 0.55 },
-    { x: 0.45, y: 0.72 },
-    { x: 0.65, y: 0.72 }
+    { x: 0.65, y: 0.72 },
+    { x: 0.45, y: 0.72 }
+    
   ];
 
   positions.forEach((p, i) => {
@@ -144,7 +148,9 @@ function initNeuralNodes() {
       color: null,
       label: NODE_LABELS[i],
       labelAlpha: 0,
-      labelOffset: 36
+      // labelOffset: 36
+      labelOffset: i === 2 ? 60 : 36
+
     });
   });
 }
@@ -201,6 +207,7 @@ function animate() {
   animateBrainReveal();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // background dots
   bgDots.forEach(d => {
     d.x += d.vx;
     d.y += d.vy;
@@ -210,7 +217,7 @@ function animate() {
     ctx.fill();
   });
 
-  // Connections
+  // connections
   if (showConnections) {
     const nodes = [...clickedNodes].map(i => neuralNodes[i]);
     ctx.strokeStyle = THEME_COLOR;
@@ -259,16 +266,24 @@ function animate() {
     }
   }
 
-  // Nodes + labels
+  // nodes + labels + numbers
   neuralNodes.forEach((n, i) => {
     const clicked = clickedNodes.has(i);
     if (clicked && n.labelAlpha < 1) n.labelAlpha += 0.03;
 
     ctx.fillStyle = clicked ? n.color : "#ff3b3b";
     ctx.beginPath();
-    ctx.arc(n.x, n.y, 4, 0, Math.PI * 2);
+    ctx.arc(n.x, n.y, 9, 0, Math.PI * 2);
     ctx.fill();
 
+    // node number
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 14px 'Segoe UI', 'Inter', 'Poppins', Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(i + 1, n.x, n.y);
+
+    // labels
     if (clicked && !showAIMerge) {
       const dx = n.x - canvas.width / 2;
       const dy = n.y - canvas.height / 2;
@@ -306,7 +321,7 @@ animate();
 // CLICK HANDLER
 // ============================================================
 splash.addEventListener("click", (e) => {
-  unlockAudio(); // MUST be first
+  unlockAudio();
 
   if (activated) return;
 
@@ -314,17 +329,36 @@ splash.addEventListener("click", (e) => {
   const y = e.clientY;
   if (!isInsideBrain(x, y)) return;
 
+  let validClick = false;
+
   neuralNodes.forEach((n, i) => {
     if (clickedNodes.has(i)) return;
+
     if (Math.hypot(n.x - x, n.y - y) < CLICK_RADIUS) {
       clickedNodes.add(i);
       n.color = NODE_COLORS[clickedNodes.size - 1];
+      validClick = true;
+
       clickSound.currentTime = 0;
       clickSound.play().catch(() => {});
+
       updateBrainRevealTarget();
     }
   });
 
+  // 🔹 Hide instruction text ONLY after first VALID node click
+  if (validClick && !instructionHidden) {
+    const instr = document.getElementById("instructionText");
+    if (instr) {
+      instr.classList.add("hidden");
+      setTimeout(() => {
+        instr.style.display = "none";
+      }, 900);
+    }
+    instructionHidden = true;
+  }
+
+  // 🔹 Final sequence trigger
   if (clickedNodes.size === REQUIRED_CLICKS && !showConnections) {
     showConnections = true;
 
@@ -373,6 +407,8 @@ video.addEventListener("ended", () => {
   clickedNodes.clear();
   revealTarget = 0;
   revealCurrent = 0;
+  instructionHidden = false;
+
   brainImg.style.clipPath = "circle(0% at 50% 50%)";
 });
 

@@ -6,7 +6,28 @@ html, body {
   overflow: hidden;
   cursor: pointer;
 }
+#instructionText {
+  position: absolute;
+  top: 6%;
+  width: 100%;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  color: #ff0000;
+  letter-spacing: 0.5px;
+  transition: opacity 0.8s ease, transform 0.8s ease;
+  pointer-events: none;
+}
 
+#instructionText.fade-out {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+#instructionText.hidden {
+  opacity: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
+}
 #brainImage {
   transition: clip-path 0.9s ease-out;
 }
