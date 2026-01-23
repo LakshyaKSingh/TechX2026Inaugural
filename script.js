@@ -405,20 +405,19 @@ video.addEventListener("ended", () => {
   video.pause();
   video.currentTime = 0;
   video.style.display = "none";
+
+  finalStaticState = true;
+  activated = true;
+
+  // 🔴 THIS LINE SWITCHES TO INAUGURATION IMAGE
+  brainImg.src = "unnamed.jpg";
+
+  revealTarget = 100;
+  revealCurrent = 100;
+  brainImg.style.clipPath = "circle(100% at 50% 50%)";
+
   splash.style.display = "block";
-
-  activated = false;
-  recombining = false;
-  showConnections = false;
-  showAIMerge = false;
-  aiAlpha = 0;
-
-  clickedNodes.clear();
-  revealTarget = 0;
-  revealCurrent = 0;
-  instructionHidden = false;
-
-  brainImg.style.clipPath = "circle(0% at 50% 50%)";
+  splash.style.pointerEvents = "none";
 });
 
 // ============================================================
