@@ -301,7 +301,7 @@ function animate() {
 
       ctx.globalAlpha = n.labelAlpha;
       ctx.fillStyle = THEME_COLOR;
-      ctx.font = "600 15px 'Segoe UI', 'Inter', 'Poppins', Arial";
+      ctx.font = "600 20px 'Segoe UI', 'Inter', 'Poppins', Arial";
       ctx.fillText(
         n.label,
         n.x + (dx / len) * n.labelOffset,
@@ -315,7 +315,7 @@ function animate() {
     aiAlpha += 0.025;
     ctx.globalAlpha = Math.min(aiAlpha, 1);
     ctx.fillStyle = THEME_COLOR;
-    ctx.font = "bold 72px 'Segoe UI', 'Inter', 'Poppins', Arial";
+    ctx.font = "bold 80px 'Segoe UI', 'Inter', 'Poppins', Arial";
     ctx.textAlign = "center";
     ctx.fillText("AI", canvas.width / 2, canvas.height / 2 + 24);
     ctx.globalAlpha = 1;
