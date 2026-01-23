@@ -212,7 +212,15 @@ function controlPoint(a, b, k = 0.25) {
 // INIT
 // ============================================================
 initNeuralNodes();
+brainImg.style.transform = "scale(1)";
 brainImg.style.clipPath = "circle(0% at 50% 50%)";
+
+// animate to full circle
+// requestAnimationFrame(() => {
+//   brainImg.style.transform = "scale(1)";
+//   brainImg.style.clipPath = "circle(100% at 50% 50%)";
+// });
+
 
 // ============================================================
 // DRAW LOOP
@@ -408,17 +416,35 @@ video.addEventListener("ended", () => {
 
   finalStaticState = true;
   activated = true;
+  showConnections = false;
+  clickedNodes.clear();
 
-  // 🔴 THIS LINE SWITCHES TO INAUGURATION IMAGE
-  brainImg.src = "unnamed.jpg";
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.style.display = "none";
 
-  revealTarget = 100;
-  revealCurrent = 100;
-  brainImg.style.clipPath = "circle(100% at 50% 50%)";
+  // swap image freely
+  brainImg.src = "Poster.png";
 
   splash.style.display = "block";
   splash.style.pointerEvents = "none";
+
+  // 🔴 START STATE (NO TRANSITION)
+  brainImg.style.transition = "none";
+  brainImg.style.transform = "scale(0.85)";
+  brainImg.style.clipPath = "circle(0% at 50% 50%)";
+
+  // 🔥 FORCE REFLOW — THIS MAKES ANIMATION WORK
+  brainImg.offsetHeight;
+
+  // 🔴 ENABLE TRANSITION + ANIMATE
+  brainImg.style.transition =
+    "clip-path 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), " +
+    "transform 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
+
+  brainImg.style.transform = "scale(1)";
+  brainImg.style.clipPath = "circle(100% at 50% 50%)";
 });
+
 
 // ============================================================
 // HARDENING
