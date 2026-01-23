@@ -165,7 +165,7 @@ function initNeuralNodes() {
       color: null,
       label: NODE_LABELS[i],
       labelAlpha: 0,
-      labelOffset: i === 2 ? 60 : 36
+      labelOffset: i === 2 ? 60 : 46
     });
   });
 }
@@ -288,7 +288,7 @@ function animate() {
     ctx.arc(n.x, n.y, 11, 0, Math.PI * 2);//This Control Circle Colour
     ctx.fill();
 
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#f6f6f6";
     ctx.font = "bold 14px 'Segoe UI', 'Inter', 'Poppins', Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
