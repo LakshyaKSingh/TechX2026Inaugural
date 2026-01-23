@@ -50,18 +50,15 @@ function unlockAudio() {
   clickSound.muted = false;
   clickSound.volume = 1;
 
-  Promise.allSettled([
-    video.play().then(() => {
-      video.pause();
-      video.currentTime = 0;
-    }),
-    clickSound.play().then(() => {
-      clickSound.pause();
-      clickSound.currentTime = 0;
-    })
-  ]).then(() => {
-    audioUnlocked = true;
-  });
+  video.play().then(() => {
+    video.pause();
+    video.currentTime = 0;
+  }).catch(() => {});
+
+  clickSound.currentTime = 0;
+  clickSound.load();
+
+  audioUnlocked = true;
 }
 
 // ============================================================
@@ -288,7 +285,7 @@ function animate() {
 
     ctx.fillStyle = clicked ? n.color : "#ff3b3b";
     ctx.beginPath();
-    ctx.arc(n.x, n.y, 11, 0, Math.PI * 2);//This Control Circle
+    ctx.arc(n.x, n.y, 11, 0, Math.PI * 2);//This Control Circle Colour
     ctx.fill();
 
     ctx.fillStyle = "#ffffff";
