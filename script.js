@@ -37,38 +37,43 @@ const NODE_LABELS = [
 const THEME_COLOR = "#ff0000";
 
 // ============================================================
-// PLATFORM CHECK
-// ============================================================
-function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent);
-}
-
-// ============================================================
-// AUDIO UNLOCK
+// AUDIO UNLOCK (CRITICAL)
 // ============================================================
 let audioUnlocked = false;
 
 function unlockAudio() {
   if (audioUnlocked) return;
 
-  video.muted = true;
-  video.playsInline = true;
+  video.muted = false;
+  video.volume = 1;
 
   clickSound.muted = false;
   clickSound.volume = 1;
+
+  video.play().then(() => {
+    video.pause();
+    video.currentTime = 0;
+  }).catch(() => {});
+
   clickSound.currentTime = 0;
-  clickSound.play().catch(() => {});
+  clickSound.load();
 
   audioUnlocked = true;
 }
 
 // ============================================================
-// FULLSCREEN (DESKTOP ONLY)
+// DESKTOP FULLSCREEN HELPER (ADDED)
 // ============================================================
 function requestVideoFullscreen() {
-  if (isIOS()) return;
   if (document.fullscreenElement) return;
-  if (video.requestFullscreen) video.requestFullscreen();
+
+  if (video.requestFullscreen) {
+    video.requestFullscreen();
+  } else if (video.webkitRequestFullscreen) {
+    video.webkitRequestFullscreen();
+  } else if (video.msRequestFullscreen) {
+    video.msRequestFullscreen();
+  }
 }
 
 // ============================================================
@@ -92,13 +97,15 @@ const clickedNodes = new Set();
 
 let recombining = false;
 let activated = false;
+
 let showConnections = false;
 let currentLink = 0;
 let linkProgress = 0;
+
 let showAIMerge = false;
 let aiAlpha = 0;
+
 let instructionHidden = false;
-let finalStaticState = false;
 
 // ============================================================
 // BRAIN REVEAL
@@ -114,9 +121,9 @@ function updateBrainRevealTarget() {
 }
 
 function animateBrainReveal() {
-  if (finalStaticState) return;
   revealCurrent += (revealTarget - revealCurrent) * 0.045;
   brainImg.style.clipPath = `circle(${revealCurrent}% at 50% 50%)`;
+  brainImg.style.webkitClipPath = `circle(${revealCurrent}% at 50% 50%)`;
 }
 
 // ============================================================
@@ -141,8 +148,8 @@ function initNeuralNodes() {
 
   const positions = [
     { x: 0.35, y: 0.55 },
-    { x: 0.65, y: 0.55 },
-    { x: 0.65, y: 0.72 },
+    { x: 0.65, y: 0.55 }, //2
+    { x: 0.65, y: 0.72 },//3
     { x: 0.50, y: 0.40 },
     { x: 0.45, y: 0.72 }
   ];
@@ -164,6 +171,8 @@ function initNeuralNodes() {
 }
 
 function updateNeuralNodePositions() {
+  if (recombining) return;
+
   const r = getBrainRect();
   const l = r.left + r.width * BRAIN_SAFE_INSET.left;
   const rt = r.right - r.width * BRAIN_SAFE_INSET.right;
@@ -171,13 +180,8 @@ function updateNeuralNodePositions() {
   const b = r.bottom - r.height * BRAIN_SAFE_INSET.bottom;
 
   neuralNodes.forEach(n => {
-    if (recombining && n.targetX !== null) {
-      n.x += (n.targetX - n.x) * 0.08;
-      n.y += (n.targetY - n.y) * 0.08;
-    } else {
-      n.x = l + (rt - l) * n.rx;
-      n.y = t + (b - t) * n.ry;
-    }
+    n.x = l + (rt - l) * n.rx;
+    n.y = t + (b - t) * n.ry;
   });
 }
 
@@ -208,7 +212,15 @@ function controlPoint(a, b, k = 0.25) {
 // INIT
 // ============================================================
 initNeuralNodes();
+brainImg.style.transform = "scale(1)";
 brainImg.style.clipPath = "circle(0% at 50% 50%)";
+
+// animate to full circle
+// requestAnimationFrame(() => {
+//   brainImg.style.transform = "scale(1)";
+//   brainImg.style.clipPath = "circle(100% at 50% 50%)";
+// });
+
 
 // ============================================================
 // DRAW LOOP
@@ -281,11 +293,11 @@ function animate() {
 
     ctx.fillStyle = clicked ? n.color : "#ff3b3b";
     ctx.beginPath();
-    ctx.arc(n.x, n.y, 11, 0, Math.PI * 2);
+    ctx.arc(n.x, n.y, 11, 0, Math.PI * 2);//This Control Circle Colour
     ctx.fill();
 
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 14px Arial";
+    ctx.fillStyle = "#f6f6f6";
+    ctx.font = "bold 14px 'Segoe UI', 'Inter', 'Poppins', Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(i + 1, n.x, n.y);
@@ -297,7 +309,7 @@ function animate() {
 
       ctx.globalAlpha = n.labelAlpha;
       ctx.fillStyle = THEME_COLOR;
-      ctx.font = "600 18px Arial";
+      ctx.font = "600 20px 'Segoe UI', 'Inter', 'Poppins', Arial";
       ctx.fillText(
         n.label,
         n.x + (dx / len) * n.labelOffset,
@@ -311,7 +323,7 @@ function animate() {
     aiAlpha += 0.025;
     ctx.globalAlpha = Math.min(aiAlpha, 1);
     ctx.fillStyle = THEME_COLOR;
-    ctx.font = "bold 80px Arial";
+    ctx.font = "bold 80px 'Segoe UI', 'Inter', 'Poppins', Arial";
     ctx.textAlign = "center";
     ctx.fillText("AI", canvas.width / 2, canvas.height / 2 + 24);
     ctx.globalAlpha = 1;
@@ -327,11 +339,14 @@ animate();
 // ============================================================
 splash.addEventListener("click", (e) => {
   unlockAudio();
-  if (activated || finalStaticState) return;
+
+  if (activated) return;
 
   const x = e.clientX;
   const y = e.clientY;
   if (!isInsideBrain(x, y)) return;
+
+  let validClick = false;
 
   neuralNodes.forEach((n, i) => {
     if (clickedNodes.has(i)) return;
@@ -339,15 +354,30 @@ splash.addEventListener("click", (e) => {
     if (Math.hypot(n.x - x, n.y - y) < CLICK_RADIUS) {
       clickedNodes.add(i);
       n.color = NODE_COLORS[clickedNodes.size - 1];
+      validClick = true;
+
       clickSound.currentTime = 0;
       clickSound.play().catch(() => {});
+
       updateBrainRevealTarget();
     }
   });
 
+  if (validClick && !instructionHidden) {
+    const instr = document.getElementById("instructionText");
+    if (instr) {
+      instr.classList.add("hidden");
+      setTimeout(() => {
+        instr.style.display = "none";
+      }, 900);
+    }
+    instructionHidden = true;
+  }
+
   if (clickedNodes.size === REQUIRED_CLICKS && !showConnections) {
     showConnections = true;
-    if (!isIOS()) requestVideoFullscreen();
+
+    requestVideoFullscreen();
 
     setTimeout(() => {
       recombining = true;
@@ -363,21 +393,21 @@ splash.addEventListener("click", (e) => {
 
       setTimeout(() => {
         splash.style.display = "none";
-        video.style.display = "block";
-        video.muted = true;
-        video.playsInline = true;
+        clickSound.pause();
+        clickSound.currentTime = 0;
 
-        video.play().then(() => {
-          if (!isIOS()) video.muted = false;
-        }).catch(() => {});
+        video.muted = false;
+        video.volume = 1;
+        video.style.display = "block";
+        video.play().catch(() => {});
         activated = true;
-      }, 2500);
-    }, REQUIRED_CLICKS * 1500);
+      }, 3500);
+    }, REQUIRED_CLICKS * 500);
   }
 });
 
 // ============================================================
-// VIDEO END → STATIC IMAGE
+// VIDEO RESET
 // ============================================================
 video.addEventListener("ended", () => {
   video.pause();
@@ -386,25 +416,35 @@ video.addEventListener("ended", () => {
 
   finalStaticState = true;
   activated = true;
+  showConnections = false;
+  clickedNodes.clear();
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   canvas.style.display = "none";
 
+  // swap image freely
   brainImg.src = "Poster.png";
-
-  brainImg.style.transition = "none";
-  brainImg.style.transform = "scale(0.85)";
-  brainImg.style.clipPath = "circle(0% at 50% 50%)";
-  brainImg.offsetHeight;
-
-  brainImg.style.transition =
-    "clip-path 1.2s cubic-bezier(0.175,0.885,0.32,1.275), transform 1.2s cubic-bezier(0.175,0.885,0.32,1.275)";
-  brainImg.style.transform = "scale(1)";
-  brainImg.style.clipPath = "circle(100% at 50% 50%)";
 
   splash.style.display = "block";
   splash.style.pointerEvents = "none";
+
+  // 🔴 START STATE (NO TRANSITION)
+  brainImg.style.transition = "none";
+  brainImg.style.transform = "scale(0.85)";
+  brainImg.style.clipPath = "circle(0% at 50% 50%)";
+
+  // 🔥 FORCE REFLOW — THIS MAKES ANIMATION WORK
+  brainImg.offsetHeight;
+
+  // 🔴 ENABLE TRANSITION + ANIMATE
+  brainImg.style.transition =
+    "clip-path 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), " +
+    "transform 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
+
+  brainImg.style.transform = "scale(1)";
+  brainImg.style.clipPath = "circle(100% at 50% 50%)";
 });
+
 
 // ============================================================
 // HARDENING
