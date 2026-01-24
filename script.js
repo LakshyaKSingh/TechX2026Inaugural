@@ -148,8 +148,8 @@ function initNeuralNodes() {
 
   const positions = [
     { x: 0.35, y: 0.55 },
-    { x: 0.65, y: 0.55 }, //2
-    { x: 0.65, y: 0.72 },//3
+    { x: 0.65, y: 0.55 },
+    { x: 0.65, y: 0.72 },
     { x: 0.50, y: 0.40 },
     { x: 0.45, y: 0.72 }
   ];
@@ -215,17 +215,12 @@ initNeuralNodes();
 brainImg.style.transform = "scale(1)";
 brainImg.style.clipPath = "circle(0% at 50% 50%)";
 
-// animate to full circle
-// requestAnimationFrame(() => {
-//   brainImg.style.transform = "scale(1)";
-//   brainImg.style.clipPath = "circle(100% at 50% 50%)";
-// });
-
-
 // ============================================================
 // DRAW LOOP
 // ============================================================
 function animate() {
+  if (activated) return; // 🔴 FIX 1: stop animation when video starts
+
   updateNeuralNodePositions();
   animateBrainReveal();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -293,7 +288,7 @@ function animate() {
 
     ctx.fillStyle = clicked ? n.color : "#ff3b3b";
     ctx.beginPath();
-    ctx.arc(n.x, n.y, 11, 0, Math.PI * 2);//This Control Circle Colour
+    ctx.arc(n.x, n.y, 11, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = "#f6f6f6";
@@ -396,6 +391,8 @@ splash.addEventListener("click", (e) => {
         clickSound.pause();
         clickSound.currentTime = 0;
 
+        canvas.style.display = "none"; // 🔴 FIX 2: hide canvas
+
         video.muted = false;
         video.volume = 1;
         video.style.display = "block";
@@ -405,46 +402,6 @@ splash.addEventListener("click", (e) => {
     }, REQUIRED_CLICKS * 500);
   }
 });
-
-// ============================================================
-// VIDEO RESET
-// ============================================================
-video.addEventListener("ended", () => {
-  video.pause();
-  video.currentTime = 0;
-  video.style.display = "none";
-
-  finalStaticState = true;
-  activated = true;
-  showConnections = false;
-  clickedNodes.clear();
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  canvas.style.display = "none";
-
-  // swap image freely
-  brainImg.src = "Poster.png";
-
-  splash.style.display = "block";
-  splash.style.pointerEvents = "none";
-
-  // 🔴 START STATE (NO TRANSITION)
-  brainImg.style.transition = "none";
-  brainImg.style.transform = "scale(0.85)";
-  brainImg.style.clipPath = "circle(0% at 50% 50%)";
-
-  // 🔥 FORCE REFLOW — THIS MAKES ANIMATION WORK
-  brainImg.offsetHeight;
-
-  // 🔴 ENABLE TRANSITION + ANIMATE
-  brainImg.style.transition =
-    "clip-path 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), " +
-    "transform 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
-
-  brainImg.style.transform = "scale(1)";
-  brainImg.style.clipPath = "circle(100% at 50% 50%)";
-});
-
 
 // ============================================================
 // HARDENING
