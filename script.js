@@ -62,7 +62,7 @@ function unlockAudio() {
 }
 
 // ============================================================
-// DESKTOP FULLSCREEN HELPER (ADDED)
+// DESKTOP/IPAD FULLSCREEN HELPER
 // ============================================================
 function requestVideoFullscreen() {
   if (document.fullscreenElement) return;
@@ -219,7 +219,7 @@ brainImg.style.clipPath = "circle(0% at 50% 50%)";
 // DRAW LOOP
 // ============================================================
 function animate() {
-  if (activated) return; // 🔴 FIX 1: stop animation when video starts
+  if (activated) return; 
 
   updateNeuralNodePositions();
   animateBrainReveal();
@@ -372,7 +372,8 @@ splash.addEventListener("click", (e) => {
   if (clickedNodes.size === REQUIRED_CLICKS && !showConnections) {
     showConnections = true;
 
-    requestVideoFullscreen();
+    // 🔴 BUG FIX: Removed requestVideoFullscreen() from here 
+    // iPad Safari forces the video to the front immediately when this is called.
 
     setTimeout(() => {
       recombining = true;
@@ -387,17 +388,22 @@ splash.addEventListener("click", (e) => {
       setTimeout(() => splash.classList.add("zoom-out"), 2500);
 
       setTimeout(() => {
+        // Stop current scene
+        activated = true; 
         splash.style.display = "none";
+        canvas.style.display = "none";
         clickSound.pause();
         clickSound.currentTime = 0;
 
-        canvas.style.display = "none"; // 🔴 FIX 2: hide canvas
-
+        // Start video scene
+        video.style.display = "block";
         video.muted = false;
         video.volume = 1;
-        video.style.display = "block";
+
+        // 🔴 BUG FIX: Trigger Fullscreen and Play at the same time
+        requestVideoFullscreen(); 
         video.play().catch(() => {});
-        activated = true;
+        
       }, 3500);
     }, REQUIRED_CLICKS * 500);
   }
