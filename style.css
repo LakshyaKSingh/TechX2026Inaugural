@@ -124,7 +124,7 @@ html, body {
   display: none;
   cursor: none;
 }
-video::-webkit-media-controls {
+/* video::-webkit-media-controls {
   display: none !important;
 }
 video::-webkit-media-controls-start-playback-button {
@@ -135,7 +135,7 @@ video::-webkit-media-controls-overlay-play-button {
 }
 video::-webkit-media-controls-panel {
   display: none !important;
-}
+} */
 
 video {
   outline: none;
