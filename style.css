@@ -20,7 +20,7 @@ html, body {
 #instructionText {
   
   position: fixed;
-  top: 18px;
+  top: 50px;
   left: 50%;
   transform: translateX(-50%);
   text-align: center;
