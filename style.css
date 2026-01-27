@@ -24,7 +24,7 @@ html, body {
   left: 50%;
   transform: translateX(-50%);
   text-align: center;
-  color: #f50000;
+  color: #ff0000;
   z-index: 20;
   pointer-events: none; /* CRITICAL: do not block clicks */
 }
@@ -94,6 +94,7 @@ html, body {
   height: 100%;
   object-fit: contain;
   pointer-events: none;
+  margin-top: 120px
 }
 
 #splash.zoom-out {
